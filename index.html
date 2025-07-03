@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Resumo de Pedidos - Dani Docinhos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 0 auto; background: #f9f9f9; }
+    h1, h2 { color: #6a3c1c; }
+    .resumo { background: #fff; padding: 18px; border-radius: 10px; margin-bottom: 18px; box-shadow: 0 2px 6px #0001;}
+    label { font-weight: bold; }
+    select, button { font-size: 1em; padding: 5px 12px; margin: 5px 0; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 16px;}
+    th, td { border: 1px solid #d9cbb3; padding: 8px; text-align: left; }
+    th { background: #f5e4d8; }
+    .center { text-align: center; }
+    .totais { background: #ffeacc; }
+  </style>
+</head>
+<body>
+  <h1>Resumo de Pedidos</h1>
+  <div class="resumo">
+    <label for="dataEntrega">Selecione a data de entrega:</label>
+    <select id="dataEntrega"></select>
+    <button onclick="carregarResumo()">Ver Resumo</button>
+  </div>
+  <div id="painelResumo"></div>
+  <script>
+    // Cole abaixo a URL do seu Apps Script (ex: .../exec ou .../dev)
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycbz7tVVrsLFVTQam1zmqpaqAnCaDK6bpcjqt6I7-CNEl/dev";
+
+    let dadosPlanilha = [];
+    let titulos = [];
+
+    // Carrega todos os dados
+    async function carregarDados() {
+      const resp = await fetch(ENDPOINT);
+      dadosPlanilha = await resp.json();
+      titulos = dadosPlanilha[0];
+      dadosPlanilha = dadosPlanilha.slice(1);
+      preencherDatas();
+    }
+
+    // Preenche as datas disponíveis no select
+    function preencherDatas() {
+      const idxData = titulos.indexOf('data_entrega');
+      const datas = {};
+      dadosPlanilha.forEach(linha => {
+        if (linha[idxData] && linha[idxData].toString().length >= 8) {
+          datas[linha[idxData]] = true;
+        }
+      });
+      const listaDatas = Object.keys(datas).sort();
+      const sel = document.getElementById('dataEntrega');
+      sel.innerHTML = '';
+      listaDatas.forEach(data => {
+        const dt = new Date(data.replace(/-/g, '/'));
+        const dias = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+        const option = document.createElement('option');
+        option.value = data;
+        option.textContent = `${("0"+dt.getDate()).slice(-2)}/${("0"+(dt.getMonth()+1)).slice(-2)} (${dias[dt.getDay()]})`;
+        sel.appendChild(option);
+      });
+    }
+
+    function carregarResumo() {
+      const data = document.getElementById('dataEntrega').value;
+      if (!data) return;
+      const idxNome = titulos.indexOf('nome');
+      const idxData = titulos.indexOf('data_entrega');
+      const idxPedido = titulos.indexOf('pedido');
+
+      // Por cliente
+      let porCliente = [];
+      let totais = {brigadeiro:0, beijinho:0, doisamores:0};
+
+      dadosPlanilha.filter(l => l[idxData] === data).forEach(l => {
+        const nome = l[idxNome];
+        const pedido_txt = l[idxPedido] || '';
+        const bri = extrairQtd(pedido_txt, "Brigadeiro");
+        const bei = extrairQtd(pedido_txt, "Beijinho");
+        const dam = extrairQtd(pedido_txt, "Dois Amores");
+        porCliente.push({
+          nome: nome,
+          brigadeiro: bri,
+          beijinho: bei,
+          doisamores: dam
+        });
+        totais.brigadeiro += bri;
+        totais.beijinho += bei;
+        totais.doisamores += dam;
+      });
+
+      // Massas
+      const docinhosBrigadeiro = totais.brigadeiro + totais.doisamores;
+      const gramasBrigadeiro = totais.brigadeiro*20 + totais.doisamores*10;
+      const qtdMassaBrigadeiro = Math.ceil(gramasBrigadeiro/400);
+
+      const docinhosBeijinho = totais.beijinho;
+      const gramasBeijinho = totais.beijinho*20;
+      const qtdMassaBeijinho = Math.ceil(gramasBeijinho/400);
+
+      const docinhosBranco = totais.doisamores;
+      const gramasBranco = totais.doisamores*10;
+      const qtdMassaBranco = Math.ceil(gramasBranco/400);
+
+      // Monta HTML
+      let html = '';
+
+      // 1. Por cliente
+      html += '<h2>Pedidos por Cliente</h2><table><thead><tr><th>Cliente</th><th>Brigadeiro</th><th>Beijinho</th><th>Dois Amores</th></tr></thead><tbody>';
+      porCliente.forEach(cli => {
+        html += `<tr><td>${cli.nome}</td><td class="center">${cli.brigadeiro}</td><td class="center">${cli.beijinho}</td><td class="center">${cli.doisamores}</td></tr>`;
+      });
+      html += '</tbody></table>';
+
+      // 2. Totais por produto
+      html += `<h2>Totais Geral</h2>
+        <table>
+          <thead><tr><th>Produto</th><th>Total</th></tr></thead>
+          <tbody>
+            <tr><td>Brigadeiro</td><td class="center">${totais.brigadeiro}</td></tr>
+            <tr><td>Beijinho</td><td class="center">${totais.beijinho}</td></tr>
+            <tr><td>Dois Amores</td><td class="center">${totais.doisamores}</td></tr>
+          </tbody>
+        </table>`;
+
+      // 3. Resumo de massas
+      html += `<h2>Resumo de Massas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Massa</th>
+            <th>Qtd Massas</th>
+            <th>Qtd Docinhos</th>
+            <th>Qtd (g)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Brigadeiro</td>
+            <td class="center">${qtdMassaBrigadeiro}</td>
+            <td class="center">${docinhosBrigadeiro}</td>
+            <td class="center">${gramasBrigadeiro}</td>
+          </tr>
+          <tr>
+            <td>Beijinho</td>
+            <td class="center">${qtdMassaBeijinho}</td>
+            <td class="center">${docinhosBeijinho}</td>
+            <td class="center">${gramasBeijinho}</td>
+          </tr>
+          <tr>
+            <td>Brigadeiro Branco</td>
+            <td class="center">${qtdMassaBranco}</td>
+            <td class="center">${docinhosBranco}</td>
+            <td class="center">${gramasBranco}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="font-size:13px;color:#a16b00;">* Cada massa tem 400g. Brigadeiro e Beijinho: 20g cada. Dois Amores: 10g brigadeiro + 10g branco.</div>
+      `;
+      document.getElementById('painelResumo').innerHTML = html;
+    }
+
+    function extrairQtd(txt, produto) {
+      const regex = new RegExp(produto + ":\\s*(\\d+)");
+      const m = txt.match(regex);
+      return m ? parseInt(m[1]) : 0;
+    }
+
+    carregarDados();
+  </script>
+</body>
+</html>
