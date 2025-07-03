@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Resumo de Pedidos - Dani Docinhos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: sans-serif; max-width: 700px; margin: 0 auto; background: #f9f9f9; }
     h1, h2 { color: #6a3c1c; }
@@ -26,7 +25,7 @@
   </div>
   <div id="painelResumo"></div>
   <script>
-    // Cole abaixo a URL do seu Apps Script (ex: .../exec ou .../dev)
+    // COLE AQUI A URL DO SEU APPS SCRIPT
     const ENDPOINT = "https://script.google.com/macros/s/AKfycbwuJC5C5i0hDXxAEwmTJpgzklX8i6_svYo1GAEGvAy_UJm41l86K5iZVAXaf0jJTuYknA/exec";
 
     let dadosPlanilha = [];
@@ -92,6 +91,11 @@
       });
 
       // Massas
+      // Brigadeiro: cada massa 400g rende 20 brigadeiros (20g cada)
+      // Beijinho: idem
+      // Dois amores: cada um = 10g brigadeiro + 10g brigadeiro branco
+      // Brigadeiro branco: massa igual, 400g = 40 pedaços de 10g
+
       const docinhosBrigadeiro = totais.brigadeiro + totais.doisamores;
       const gramasBrigadeiro = totais.brigadeiro*20 + totais.doisamores*10;
       const qtdMassaBrigadeiro = Math.ceil(gramasBrigadeiro/400);
